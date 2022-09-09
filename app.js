@@ -1,35 +1,24 @@
-const http = require('http');
-const fs = require('fs');
+const express = require('express');
 
-const server = http.createServer((req, res) => {
-    if (req.url === '/') {
-        res.setHeader('Content-type', 'text/html');
-        res.write('<html><head><title>NodeJs</title></head>');
-        res.write('<body><form action="/message" method="POST"><input type="text" name="message"><button type="submit">Submit</button></form></body>');
-        res.write('</html>');
-        return res.end();
-    } else if (req.url === '/message') {
-        const data = [];
-        req.on('data', (chunk) => {
-            console.log('Chunk = ', chunk);
-            data.push(chunk);
-        });
-        req.on('end', () => {
-            const parsedBody = Buffer.concat(data).toString();
-            console.log('parsedBody', parsedBody);
-            const message = parsedBody.split('=')[1];
-            fs.writeFileSync('message.txt', message);
-        });
-        res.statusCode = 301;
-        res.setHeader('Location', '/home');
-        return res.end();
-    } else {
-        res.setHeader('Content-type', 'text/html');
-        res.write('<html><head><title>NodeJs</title></head>');
-        res.write('<body><h1>Hello First NodeJs Application</h1></body>');
-        res.write('</html>');
-        res.end();
-    }
+const app = express();
+
+// app.use('/', (req, res, next) => {
+//     console.log('Into the first middleware');
+//     console.log(req.method, req.url);
+//     next();
+// });
+app.use('/users', (req, res) => {
+    console.log('Into the second middleware');
+    console.log('Second = ', req.method, req.url);
+    res.send('Hello Ashutosh!');
 });
 
-server.listen(3000);
+app.use('/', (req, res, next) => {
+    console.log('Into the second middleware');
+    console.log('First = ', req.method, req.url);
+    res.send('Hello World!');
+});
+
+app.listen(2500, () => {
+    console.log('Server running on port [2500] ... ');
+});
