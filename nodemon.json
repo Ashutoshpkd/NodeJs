@@ -1,0 +1,7 @@
+{
+    "env": {
+        "MONGO_USER": "ashutoshpkd",
+        "MONGO_PASSWORD": "naruto",
+        "MONGO_DB": "rest-api-dev"
+    }
+}
