@@ -2,21 +2,19 @@ const { validationResult } = require('express-validator');
 
 const Post = require('../models/posts');
 
-exports.getPosts = (req, res, next) => {
-  res.status(200).json({
-    posts: [
-      {
-        _id: '1',
-        title: 'First Post',
-        content: 'This is the first post!',
-        imageUrl: 'images/duck.jpg',
-        creator: {
-          name: 'Maximilian'
-        },
-        createdAt: new Date()
-      }
-    ]
-  });
+exports.getPosts = async (req, res, next) => {
+    try {
+        const posts = await Post.find();
+        return res.status(200).json({
+            message: 'Fetched successfully!',
+            posts,
+        });
+    } catch (err) {
+        if (!err.statusCode) {
+            err.statusCode = 500;
+        }
+        return next(err);
+    }
 };
 
 exports.createPost = async (req, res, next) => {
@@ -27,12 +25,19 @@ try {
     err.statusCode = 422;
     throw err;
   }
+  if (!req.file) {
+    const err = new Error('Image not uploaded!');
+    err.statusCode = 422;
+    throw err;
+  }
+
   const title = req.body.title;
   const content = req.body.content;
+  const imageUrl = req.file.path;
   const post = new Post({
     title: title,
     content: content,
-    imageUrl: 'images/duck.jpg',
+    imageUrl,
     creator: { name: 'Ashutosh' }
   });
     const result = await post.save();
@@ -47,4 +52,19 @@ try {
       }
       return next(err);
   }
+};
+
+exports.getPostById = async (req, res, next) => {
+    try {
+        const post = await Post.findById(req.params.postId);
+        return res.status(200).json({
+            message: 'Post found!',
+            post,
+        })
+    } catch (err) {
+        if (!err.statusCode) {
+            err.statusCode = 404;
+        }
+        return next(err);
+    }
 };

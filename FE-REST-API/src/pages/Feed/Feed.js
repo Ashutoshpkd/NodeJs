@@ -107,22 +107,17 @@ class Feed extends Component {
     });
     // Set up data (with image!)
     let url = 'http://localhost:5050/feed/post';
-    console.log(postData);
-    const body = {
-      title: postData.title,
-      content: postData.content,
-      imageUrl: postData.image,
-    };
+    const formData = new FormData();
+    formData.append('title', postData.title);
+    formData.append('content', postData.content);
+    formData.append('images', postData.image);
     if (this.state.editPost) {
       url = 'URL';
     }
 
     fetch(url, {
       method: 'POST',
-      body: JSON.stringify(body),
-      headers: {
-        'Content-type': 'Application/json',
-      }
+      body: formData,
     })
       .then(res => {
         if (res.status !== 200 && res.status !== 201) {

@@ -14,7 +14,8 @@ class SinglePost extends Component {
 
   componentDidMount() {
     const postId = this.props.match.params.postId;
-    fetch('URL')
+    console.log(postId);
+    fetch(`http://localhost:5050/feed/posts/${postId}`)
       .then(res => {
         if (res.status !== 200) {
           throw new Error('Failed to fetch status');
@@ -25,6 +26,7 @@ class SinglePost extends Component {
         this.setState({
           title: resData.post.title,
           author: resData.post.creator.name,
+          image: 'http://localhost:5050/' + resData.post.imageUrl,
           date: new Date(resData.post.createdAt).toLocaleDateString('en-US'),
           content: resData.post.content
         });
@@ -35,6 +37,7 @@ class SinglePost extends Component {
   }
 
   render() {
+    console.log('ASHUTOSH PROPS = ', this.props);
     return (
       <section className="single-post">
         <h1>{this.state.title}</h1>

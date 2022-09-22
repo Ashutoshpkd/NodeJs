@@ -4,13 +4,36 @@ const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
 const { body } = require('express-validator');
 const { feedRouter } = require('./routes/feed');
+const multer = require('multer');
 const { join } = require('path');
 const port = 5050;
-const uri = `mongodb+srv://ashutoshpkd:naruto@rest-api.qmaic7m.mongodb.net/rest-api?retryWrites=true&w=majority`;
+const uri = `mongodb+srv://ashutoshpkd:naruto@rest-api.qmaic7m.mongodb.net/rest-api-dev?retryWrites=true&w=majority`;
 
 const app = express();
 
 app.use(bodyParser.json());
+
+const fileStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, 'images');
+  },
+  filename: (req, file, cb) => {
+    cb(null, new Date().toISOString() + '-' + file.originalname);
+  }
+});
+
+const fileFilter = (req, file, cb) => {
+  if (file.mimetype === 'image/png' || file.mimetype === 'image/jpg'
+   || file.mimetype === 'image/jpeg' || file.mimetype === 'image/JPG') {
+     cb(null, true);
+   } else {
+     cb(null, false);
+   }
+};
+
+app.use(
+  multer({ storage: fileStorage, fileFilter }).single('images')
+);
 
 app.use((req, res, next) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -41,4 +64,4 @@ mongoose
   })
   .catch(err => {
     console.log(err);
-  });
+});
