@@ -1,4 +1,6 @@
 const { validationResult } = require('express-validator');
+const path = require('path');
+const fs = require('fs');
 
 const Post = require('../models/posts');
 
@@ -67,4 +69,50 @@ exports.getPostById = async (req, res, next) => {
         }
         return next(err);
     }
+};
+
+exports.updatePost = async (req, res, next) => {
+  try {
+    const postId = req.params.postId;
+    const title = req.body.title;
+    const content = req.body.content;
+    let imageUrl = req.body.images;
+
+    if (req.file) {
+      imageUrl = req.file.path;
+    }
+
+    if (!imageUrl) {
+      const err = new Error('Image not selected!');
+      err.statusCode = 404;
+      throw err;
+    }
+
+    const resp = await Post.findById(postId);
+    if (imageUrl !== resp.imageUrl) clearImage(resp.imageUrl);
+
+    resp.title = title;
+    resp.content = content;
+    resp.imageUrl = imageUrl;
+
+    const result = await resp.save();
+
+    return res.status(200).json({
+      message: 'Post updated!',
+      post: result,
+    })
+    
+  } catch (err) {
+    if (!err.statusCode) {
+      err.statusCode = 422;
+    }
+    return next(err);
+  }
+};
+
+function clearImage(imgPath) {
+  const filePath = path.join(__dirname, '..', imgPath);
+  fs.unlink(filePath, (err, res) => {
+    console.log(err, res);
+  })
 };
