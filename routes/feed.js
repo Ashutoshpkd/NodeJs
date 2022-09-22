@@ -12,4 +12,6 @@ router.get('/posts', feedController.getPosts);
 
 router.post('/post', feedController.createPost);
 
+router.delete('/post/:postId', feedController.deletePost)
+
 exports.feedRouter = router;
