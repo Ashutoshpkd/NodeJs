@@ -6,9 +6,14 @@ const Post = require('../models/posts');
 
 exports.getPosts = async (req, res, next) => {
     try {
-        const posts = await Post.find();
+        const perPage = 2;
+        const page = req.query.page || 1;
+        const totalItems = await Post.find().countDocuments();
+        const posts = await Post.find().skip((page - 1) * perPage).limit(2);
+
         return res.status(200).json({
             message: 'Fetched successfully!',
+            totalItems,
             posts,
         });
     } catch (err) {

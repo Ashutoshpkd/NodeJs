@@ -4,6 +4,7 @@ const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
 const { body } = require('express-validator');
 const { feedRouter } = require('./routes/feed');
+const { userRouter } = require('./routes/user');
 const multer = require('multer');
 const { join } = require('path');
 const port = 5050;
@@ -46,6 +47,12 @@ app.use('/feed', [
     body('title').trim().isLength({ min: 5 }),
     body('content').trim().isLength({ min: 5}),
 ], feedRouter);
+
+app.use('/user', [
+  body('email').trim().isEmail().withMessage('Enter a valid email!'),
+  body('password').trim().isLength({min: 6}).withMessage('Password should be more than 6'),
+  body('name').trim().not().isEmpty().withMessage('Must be a character only'),
+], userRouter);
 
 app.use('/images', express.static(join(__dirname, 'images')));
 
