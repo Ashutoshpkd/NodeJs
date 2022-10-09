@@ -1,7 +1,7 @@
 const express = require("express");
 const { body } = require('express-validator');
-const { signup, getStatus, login, updateStatus } = require('../controller/userController');
-const { authCheck } = require("../middleware/auth");
+const { signup, getStatus, login, updateStatus, generateNewAccessToken, logout } = require('../controller/userController');
+const { authCheck, verifyRefresh } = require("../middleware/auth");
 const router = express.Router();
 
 router.put('/signup', [
@@ -21,5 +21,9 @@ router.put('/updatestatus', [
     body('status').trim().isString().withMessage('Only numbers and characters allowed.'),
     authCheck,
 ], updateStatus);
+
+router.put('/refresh/:userId', verifyRefresh, generateNewAccessToken);
+
+router.delete('/logout/:userId', logout);
 
 exports.userRouter = router;

@@ -1,4 +1,4 @@
-import React, { Component, Fragment } from 'react';
+import React, { Fragment, useState, useContext } from 'react';
 import { Route, Switch, Redirect, withRouter } from 'react-router-dom';
 
 import Layout from './components/Layout/Layout';
@@ -12,53 +12,35 @@ import SinglePostPage from './pages/Feed/SinglePost/SinglePost';
 import LoginPage from './pages/Auth/Login';
 import SignupPage from './pages/Auth/Signup';
 import './App.css';
+import AuthContext from './store/auth';
 
-class App extends Component {
-  state = {
-    showBackdrop: false,
-    showMobileNav: false,
-    isAuth: false,
-    token: null,
-    userId: null,
-    authLoading: false,
-    error: null
+function App(props) {
+  const [showBackdrop, setShowBackdrop] = useState(false);
+  const [showMobileNav, setShowMobileNav] = useState(false);
+  const [authLoading, setAuthLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const ctx = useContext(AuthContext);
+
+  const {
+    token,
+    userId,
+    isAuth,
+  } = ctx;
+
+  const mobileNavHandler = isOpen => {
+    setShowMobileNav(isOpen);
+    setShowBackdrop(isOpen);
   };
 
-  componentDidMount() {
-    const token = localStorage.getItem('token');
-    const expiryDate = localStorage.getItem('expiryDate');
-    if (!token || !expiryDate) {
-      return;
-    }
-    if (new Date(expiryDate) <= new Date()) {
-      this.logoutHandler();
-      return;
-    }
-    const userId = localStorage.getItem('userId');
-    const remainingMilliseconds =
-      new Date(expiryDate).getTime() - new Date().getTime();
-    this.setState({ isAuth: true, token: token, userId: userId });
-    this.setAutoLogout(remainingMilliseconds);
-  }
-
-  mobileNavHandler = isOpen => {
-    this.setState({ showMobileNav: isOpen, showBackdrop: isOpen });
+  const backdropClickHandler = () => {
+    setShowBackdrop(false);
+    setShowMobileNav(false);
+    setError(null);
   };
 
-  backdropClickHandler = () => {
-    this.setState({ showBackdrop: false, showMobileNav: false, error: null });
-  };
-
-  logoutHandler = () => {
-    this.setState({ isAuth: false, token: null });
-    localStorage.removeItem('token');
-    localStorage.removeItem('expiryDate');
-    localStorage.removeItem('userId');
-  };
-
-  loginHandler = (event, authData) => {
+  const loginHandler = (event, authData) => {
     event.preventDefault();
-    this.setState({ authLoading: true });
+    setAuthLoading(true);
     const requestBody = {
       email: authData.email,
       password: authData.password,
@@ -81,35 +63,29 @@ class App extends Component {
         return res.json();
       })
       .then(resData => {
-        console.log(resData);
-        this.setState({
-          isAuth: true,
-          token: resData.token,
-          authLoading: false,
-          userId: resData.userId
-        });
-        localStorage.setItem('token', resData.token);
-        localStorage.setItem('userId', resData.userId);
+        setAuthLoading(false);
         const remainingMilliseconds = 60 * 60 * resData.tokenExpiration * 1000;
         const expiryDate = new Date(
           new Date().getTime() + remainingMilliseconds
         );
-        localStorage.setItem('expiryDate', expiryDate.toISOString());
-        this.setAutoLogout(remainingMilliseconds);
+        const payload = {
+          token: resData.token,
+          expiryDate,
+          userId: resData.userId,
+          refreshToken: resData.refreshToken,
+        }
+        ctx.login(payload);
       })
       .catch(err => {
         console.log(err);
-        this.setState({
-          isAuth: false,
-          authLoading: false,
-          error: err
-        });
+        setAuthLoading(false);
+        setError(err);
       });
   };
 
-  signupHandler = (event, authData) => {
+  const signupHandler = (event, authData) => {
     event.preventDefault();
-    this.setState({ authLoading: true });
+    setAuthLoading(true);
     const requestBody = {
       email: authData.signupForm.email.value,
       name: authData.signupForm.name.value,
@@ -136,30 +112,20 @@ class App extends Component {
       })
       .then(resData => {
         console.log(resData);
-        this.setState({ isAuth: false, authLoading: false });
-        this.props.history.replace('/');
+        setAuthLoading(false);
+        props.history.replace('/');
       })
       .catch(err => {
         console.log(err);
-        this.setState({
-          isAuth: false,
-          authLoading: false,
-          error: err
-        });
+        setAuthLoading(false);
+        setError(err);
       });
   };
 
-  setAutoLogout = milliseconds => {
-    setTimeout(() => {
-      this.logoutHandler();
-    }, milliseconds);
+  const errorHandler = () => {
+    setError(null);
   };
 
-  errorHandler = () => {
-    this.setState({ error: null });
-  };
-
-  render() {
     let routes = (
       <Switch>
         <Route
@@ -168,8 +134,8 @@ class App extends Component {
           render={props => (
             <LoginPage
               {...props}
-              onLogin={this.loginHandler}
-              loading={this.state.authLoading}
+              onLogin={loginHandler}
+              loading={authLoading}
             />
           )}
         />
@@ -179,22 +145,22 @@ class App extends Component {
           render={props => (
             <SignupPage
               {...props}
-              onSignup={this.signupHandler}
-              loading={this.state.authLoading}
+              onSignup={signupHandler}
+              loading={authLoading}
             />
           )}
         />
         <Redirect to="/" />
       </Switch>
     );
-    if (this.state.isAuth) {
+    if (isAuth) {
       routes = (
         <Switch>
           <Route
             path="/"
             exact
             render={props => (
-              <FeedPage userId={this.state.userId} token={this.state.token} />
+              <FeedPage userId={userId} token={token} />
             )}
           />
           <Route
@@ -202,8 +168,8 @@ class App extends Component {
             render={props => (
               <SinglePostPage
                 {...props}
-                userId={this.state.userId}
-                token={this.state.token}
+                userId={userId}
+                token={token}
               />
             )}
           />
@@ -213,27 +179,27 @@ class App extends Component {
     }
     return (
       <Fragment>
-        {this.state.showBackdrop && (
-          <Backdrop onClick={this.backdropClickHandler} />
+        {showBackdrop && (
+          <Backdrop onClick={backdropClickHandler} />
         )}
-        <ErrorHandler error={this.state.error} onHandle={this.errorHandler} />
+        <ErrorHandler error={error} onHandle={errorHandler} />
         <Layout
           header={
             <Toolbar>
               <MainNavigation
-                onOpenMobileNav={this.mobileNavHandler.bind(this, true)}
-                onLogout={this.logoutHandler}
-                isAuth={this.state.isAuth}
+                onOpenMobileNav={mobileNavHandler.bind(this, true)}
+                onLogout={ctx.logout}
+                isAuth={isAuth}
               />
             </Toolbar>
           }
           mobileNav={
             <MobileNavigation
-              open={this.state.showMobileNav}
+              open={showMobileNav}
               mobile
-              onChooseItem={this.mobileNavHandler.bind(this, false)}
-              onLogout={this.logoutHandler}
-              isAuth={this.state.isAuth}
+              onChooseItem={mobileNavHandler.bind(this, false)}
+              onLogout={ctx.logout}
+              isAuth={isAuth}
             />
           }
         />
@@ -241,6 +207,5 @@ class App extends Component {
       </Fragment>
     );
   }
-}
 
 export default withRouter(App);

@@ -3,6 +3,7 @@ const path = require('path');
 const fs = require('fs');
 
 const Post = require('../models/posts');
+const User = require('../models/users');
 
 exports.getPosts = async (req, res, next) => {
     try {
@@ -26,6 +27,7 @@ exports.getPosts = async (req, res, next) => {
 
 exports.createPost = async (req, res, next) => {
   const errors = validationResult(req);
+  const userId = req.userId;
 try {
   if (!errors.isEmpty()) {
     const err = new Error('Validation failed');
@@ -37,6 +39,11 @@ try {
     err.statusCode = 422;
     throw err;
   }
+  if (!userId) {
+    const err = new Error('Cannot create post without verifying yourself');
+    err.statusCode = 422;
+    throw err;
+  }
 
   const title = req.body.title;
   const content = req.body.content;
@@ -45,14 +52,23 @@ try {
     title: title,
     content: content,
     imageUrl,
-    creator: { name: 'Ashutosh' }
+    creator: userId,
   });
-    const result = await post.save();
-    console.log('RAW = ', result);
-    return res.status(201).json({
-        message: 'Post created!',
-        post: result,
-    });
+  const user = await User.findById(userId);
+
+  if (!user) {
+    const err = new Error('Invalid authorization!');
+    err.statusCode = 404;
+    throw err;
+  }
+  const result = await post.save();
+  user.posts.push(result.id);
+  const creator = await user.save();
+  return res.status(201).json({
+      message: 'Post created!',
+      post: result,
+      creator,
+  });
   } catch (err) {
       if (!err.statusCode) {
         err.statusCode = 422;
@@ -82,6 +98,7 @@ exports.updatePost = async (req, res, next) => {
     const title = req.body.title;
     const content = req.body.content;
     let imageUrl = req.body.images;
+    const userId = req.userId;
 
     if (req.file) {
       imageUrl = req.file.path;
@@ -94,6 +111,13 @@ exports.updatePost = async (req, res, next) => {
     }
 
     const resp = await Post.findById(postId);
+
+    if (resp.creator.toString() !== userId) {
+      const err = new Error('Not Authorised');
+      err.statusCode = 401;
+      throw err;
+    }
+
     if (imageUrl !== resp.imageUrl) clearImage(resp.imageUrl);
 
     resp.title = title;
@@ -118,8 +142,16 @@ exports.updatePost = async (req, res, next) => {
 exports.deletePost = async (req, res, next) => {
   try {
     const postId = req.params.postId;
+    const userId = req.userId;
 
     const resp = await Post.findById(postId);
+    
+    if (resp.creator.toString() !== userId) {
+      const err = new Error('Not Authorised');
+      err.statusCode = 401;
+      throw err;
+    }
+
     if (!resp) {
       const err = new Error('Post not found!');
       err.statusCode = 422;
