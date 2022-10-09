@@ -39,7 +39,7 @@ app.use(
 app.use((req, res, next) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', '*');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     return next();
 });
 
@@ -48,11 +48,7 @@ app.use('/feed', [
     body('content').trim().isLength({ min: 5}),
 ], feedRouter);
 
-app.use('/user', [
-  body('email').trim().isEmail().withMessage('Enter a valid email!'),
-  body('password').trim().isLength({min: 6}).withMessage('Password should be more than 6'),
-  body('name').trim().not().isEmpty().withMessage('Must be a character only'),
-], userRouter);
+app.use('/user', userRouter);
 
 app.use('/images', express.static(join(__dirname, 'images')));
 

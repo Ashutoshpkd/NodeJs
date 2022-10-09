@@ -17,7 +17,7 @@ class App extends Component {
   state = {
     showBackdrop: false,
     showMobileNav: false,
-    isAuth: true,
+    isAuth: false,
     token: null,
     userId: null,
     authLoading: false,
@@ -59,7 +59,17 @@ class App extends Component {
   loginHandler = (event, authData) => {
     event.preventDefault();
     this.setState({ authLoading: true });
-    fetch('URL')
+    const requestBody = {
+      email: authData.email,
+      password: authData.password,
+    }
+    fetch('http://localhost:5050/user/login', {
+      method: 'POST',
+      body: JSON.stringify(requestBody),
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    })
       .then(res => {
         if (res.status === 422) {
           throw new Error('Validation failed.');
@@ -80,7 +90,7 @@ class App extends Component {
         });
         localStorage.setItem('token', resData.token);
         localStorage.setItem('userId', resData.userId);
-        const remainingMilliseconds = 60 * 60 * 1000;
+        const remainingMilliseconds = 60 * 60 * resData.tokenExpiration * 1000;
         const expiryDate = new Date(
           new Date().getTime() + remainingMilliseconds
         );
@@ -100,7 +110,18 @@ class App extends Component {
   signupHandler = (event, authData) => {
     event.preventDefault();
     this.setState({ authLoading: true });
-    fetch('URL')
+    const requestBody = {
+      email: authData.signupForm.email.value,
+      name: authData.signupForm.name.value,
+      password: authData.signupForm.password.value,
+    }
+    fetch('http://localhost:5050/user/signup', {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(requestBody),
+    })
       .then(res => {
         if (res.status === 422) {
           throw new Error(
