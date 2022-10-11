@@ -178,13 +178,7 @@ function Feed(props) {
           throw new Error('Deleting a post failed!');
         }
         console.log(res.data);
-        setposts(prevState => 
-          {
-            const updatedPosts = prevState.filter(p => p._id !== postId);
-            setpostsLoading(false);
-            return [...updatedPosts];
-          }
-        );
+        loadPosts();
       } catch (err) {
         console.log(err);
         setpostsLoading(false);
@@ -201,6 +195,17 @@ function Feed(props) {
     setError(err);
   };
 
+  const updatePost = newPost => {
+    setposts(p => {
+      const updated = [...p];
+      const idx = updated.findIndex(o => o._id === newPost._id);
+      if (idx !== -1) {
+        updated[idx] = newPost;
+      }
+      return updated;
+    })
+  }
+
   useEffect(() => {
     async function getData() {
       try {
@@ -214,8 +219,17 @@ function Feed(props) {
       }
     }
     getData();
-    openSocket(baseURL, {transports: ['websocket', 'polling', 'flashsocket']});
     loadPosts();
+    const socket = openSocket(baseURL, {transports: ['websocket', 'polling', 'flashsocket']});
+    socket.on('post', action => {
+      if (action.type === 'create') {
+        addPost(action.post);
+      } else if (action.type === 'update') {
+        updatePost(action.post);
+      } else {
+        loadPosts();
+      }
+    })
   }, []); 
 
     return (

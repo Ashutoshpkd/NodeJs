@@ -1,6 +1,7 @@
 const { validationResult } = require('express-validator');
 const path = require('path');
 const fs = require('fs');
+const io = require('../socket');
 
 const Post = require('../models/posts');
 const User = require('../models/users');
@@ -10,7 +11,7 @@ exports.getPosts = async (req, res, next) => {
         const perPage = 3;
         const page = req.query.page || 1;
         const totalItems = await Post.find().countDocuments();
-        const posts = await Post.find().skip((page - 1) * perPage).limit(perPage).populate('creator');
+        const posts = await Post.find().skip((page - 1) * perPage).sort({createdAt: -1}).limit(perPage).populate('creator');
         console.log(posts);
         return res.status(200).json({
             message: 'Fetched successfully!',
@@ -65,6 +66,7 @@ try {
   const result = await post.save();
   user.posts.push(result.id);
   const creator = await user.save();
+  io.getIO().emit('post', { type: 'create', post: {...result._doc, creator: {_id: user.id, name: user.name } } });
   return res.status(201).json({
       message: 'Post created!',
       post: result,
@@ -111,9 +113,9 @@ exports.updatePost = async (req, res, next) => {
       throw err;
     }
 
-    const resp = await Post.findById(postId);
+    const resp = await Post.findById(postId).populate('creator');
 
-    if (resp.creator.toString() !== userId) {
+    if (resp.creator._id.toString() !== userId) {
       const err = new Error('Not Authorised');
       err.statusCode = 401;
       throw err;
@@ -126,6 +128,8 @@ exports.updatePost = async (req, res, next) => {
     resp.imageUrl = imageUrl;
 
     const result = await resp.save();
+
+    io.getIO().emit('post', { type: 'update', post: result });
 
     return res.status(200).json({
       message: 'Post updated!',
@@ -160,6 +164,7 @@ exports.deletePost = async (req, res, next) => {
     }
     clearImage(resp.imageUrl);
     const result = await Post.findByIdAndDelete(postId);
+    io.getIO().emit('post', { type: 'delete', postId } );
     return res.status(200).json({
       message: 'Deleted successfully!',
       post: result,
