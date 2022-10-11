@@ -1,4 +1,5 @@
 const express = require('express');
+const cors = require('cors');
 const path = require('path');
 const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
@@ -13,6 +14,7 @@ const uri = `mongodb+srv://ashutoshpkd:naruto@rest-api.qmaic7m.mongodb.net/rest-
 const app = express();
 
 app.use(bodyParser.json());
+app.use(cors());
 
 const fileStorage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -61,9 +63,13 @@ mongoose
 .connect(uri)
   .then(() => {
       console.log(`Connected to MongoDB - DB - ${process.env.MONGO_DB}`);
-      app.listen(port, () => {
+      const server = app.listen(port, () => {
         console.log(`SERVER UP AND RUNNING ON PORT - ... [${port}] ...`);
-    });
+      });
+      const io = require('socket.io')(server);
+      io.on('connection', (socket) => {
+        console.log('Client connected');
+      });
   })
   .catch(err => {
     console.log(err);

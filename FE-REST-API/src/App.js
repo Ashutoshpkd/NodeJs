@@ -1,6 +1,5 @@
-import React, { Fragment, useState, useContext } from 'react';
+import React, { Fragment, useState, useContext, useEffect } from 'react';
 import { Route, Switch, Redirect, withRouter } from 'react-router-dom';
-
 import Layout from './components/Layout/Layout';
 import Backdrop from './components/Backdrop/Backdrop';
 import Toolbar from './components/Toolbar/Toolbar';
@@ -13,6 +12,7 @@ import LoginPage from './pages/Auth/Login';
 import SignupPage from './pages/Auth/Signup';
 import './App.css';
 import AuthContext from './store/auth';
+import { baseURL } from './store/useAxios';
 
 function App(props) {
   const [showBackdrop, setShowBackdrop] = useState(false);
@@ -25,6 +25,7 @@ function App(props) {
     token,
     userId,
     isAuth,
+    hasError,
   } = ctx;
 
   const mobileNavHandler = isOpen => {
@@ -45,7 +46,7 @@ function App(props) {
       email: authData.email,
       password: authData.password,
     }
-    fetch('http://localhost:5050/user/login', {
+    fetch(`${baseURL}/user/login`, {
       method: 'POST',
       body: JSON.stringify(requestBody),
       headers: {
@@ -91,7 +92,7 @@ function App(props) {
       name: authData.signupForm.name.value,
       password: authData.signupForm.password.value,
     }
-    fetch('http://localhost:5050/user/signup', {
+    fetch(`${baseURL}/user/signup`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json'
@@ -125,6 +126,10 @@ function App(props) {
   const errorHandler = () => {
     setError(null);
   };
+
+  useEffect(() => {
+    setError(hasError);
+  }, [hasError])
 
     let routes = (
       <Switch>

@@ -40,7 +40,7 @@ exports.authCheck = async (req, res, next) => {
 
 exports.verifyRefresh = async (req, res, next) => {
     try {
-        const authData = req.get('Authorization');
+        const authData = req.body.refreshToken;
         const userId = req.params.userId;
 
         if (!authData) {

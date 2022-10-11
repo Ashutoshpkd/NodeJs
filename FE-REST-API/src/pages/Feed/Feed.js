@@ -1,5 +1,5 @@
-import React, { Component, Fragment } from 'react';
-
+import React, { Fragment, useState, useEffect } from 'react';
+import openSocket from 'socket.io-client';
 import Post from '../../components/Feed/Post/Post';
 import Button from '../../components/Button/Button';
 import FeedEdit from '../../components/Feed/FeedEdit/FeedEdit';
@@ -8,144 +8,115 @@ import Paginator from '../../components/Paginator/Paginator';
 import Loader from '../../components/Loader/Loader';
 import ErrorHandler from '../../components/ErrorHandler/ErrorHandler';
 import './Feed.css';
+import useAxios, { baseURL } from '../../store/useAxios';
 
-class Feed extends Component {
-  state = {
-    isEditing: false,
-    posts: [],
-    totalPosts: 0,
-    editPost: null,
-    status: '',
-    postPage: 1,
-    postsLoading: true,
-    editLoading: false
-  };
+function Feed(props) {
+  const [isEditing, setisEditing] = useState(false);
+  const [posts, setposts] = useState([]);
+  const [totalPosts, settotalPosts] = useState(0);
+  const [status, setstatus] = useState('');
+  const [postsLoading, setpostsLoading] = useState(true);
+  const [editLoading, seteditLoading] = useState(false);
+  const [editPost, seteditPost] = useState(null);
+  const [postPage, setpostPage] = useState(1);
+  const [error, setError] = useState(null);
+  const [postPerPage, setPostPerPage]  = useState(3);
+  const api = useAxios();
 
-  componentDidMount() {
-    fetch(`http://localhost:5050/user/status/${this.props.userId}`)
-      .then(res => {
-        if (res.status !== 200) {
-          throw new Error('Failed to fetch user status.');
-        }
-        return res.json();
-      })
-      .then(resData => {
-        this.setState({ status: resData.status });
-      })
-      .catch(this.catchError);
-
-    this.loadPosts();
-  }
-
-  loadPosts = direction => {
+  const loadPosts = direction => {
     if (direction) {
-      this.setState({ postsLoading: true, posts: [] });
+      setpostsLoading(true);
+      setposts([]);
     }
-    let page = this.state.postPage;
+    let page = postPage;
     if (direction === 'next') {
       page++;
-      this.setState({ postPage: page });
+      setpostPage(page);
     }
     if (direction === 'previous') {
       page--;
-      this.setState({ postPage: page });
+      setpostPage(page);
     }
-    fetch(`http://localhost:5050/feed/posts?page=${page}`)
-      .then(res => {
+    async function getData() {
+      try {
+        const res = await api.get(`/feed/posts?page=${page}`);
         if (res.status !== 200) {
           throw new Error('Failed to fetch posts.');
         }
-        return res.json();
-      })
-      .then(resData => {
-        this.setState({
-          posts: resData.posts.map(post => {
-            return {
-              ...post,
-              imagePath: post.imageUrl,
-            }
-          }),
-          totalPosts: resData.totalItems,
-          postsLoading: false
+        const newPosts = res.data.posts.map(post => {
+          return {
+            ...post,
+            imagePath: post.imageUrl,
+          }
         });
-      })
-      .catch(this.catchError);
+        setposts(newPosts);
+        settotalPosts(res.data.totalItems);
+        setpostsLoading(false);
+        setPostPerPage(res.data.perPage);
+      } catch (e) {
+        catchError(e);
+      }
+    }
+    getData();
   };
 
-  statusUpdateHandler = event => {
+  const statusUpdateHandler = event => {
     event.preventDefault();
     const reqBody = {
-      status:  this.state.status,
+      status:  status,
     };
-    fetch(`http://localhost:5050/user/updatestatus`, {
-      method: 'PUT',
-      body: JSON.stringify(reqBody),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.props.token}`
-      }
-    })
-      .then(res => {
+    async function updateStatus() {
+      try {
+        const res = await api.put(`/user/updatestatus`, reqBody);
         if (res.status !== 200 && res.status !== 201) {
           throw new Error("Can't update status!");
         }
-        return res.json();
-      })
-      .then(resData => {
-        console.log(resData);
-      })
-      .catch(this.catchError);
+        console.log(res.data);
+      } catch (e) {
+        catchError(e);
+      }
+    }
+    updateStatus();
   };
 
-  newPostHandler = () => {
-    this.setState({ isEditing: true });
+  const newPostHandler = () => {
+    setisEditing(true);
   };
 
-  startEditPostHandler = postId => {
-    this.setState(prevState => {
-      const loadedPost = { ...prevState.posts.find(p => p._id === postId) };
-
-      return {
-        isEditing: true,
-        editPost: loadedPost
-      };
-    });
+  const startEditPostHandler = postId => {
+    const loadedPost = { ...posts.find(p => p._id === postId) };
+    seteditPost(loadedPost);
+    setisEditing(true);
   };
 
-  cancelEditHandler = () => {
-    this.setState({ isEditing: false, editPost: null });
+  const cancelEditHandler = () => {
+    setisEditing(false);
+    seteditPost(null);
   };
 
-  finishEditHandler = postData => {
-    this.setState({
-      editLoading: true
-    });
-    let method = 'POST';
-    let url = 'http://localhost:5050/feed/post';
+  const finishEditHandler = postData => {
+    seteditLoading(true);
+    let url = '/feed/post';
 
     const formData = new FormData();
     formData.append('title', postData.title);
     formData.append('content', postData.content);
     formData.append('images', postData.image);
-    if (this.state.editPost) {
-      url = `${url}/${this.state.editPost._id}`;
-      method = 'PUT';
+    if (editPost) {
+      url = `${url}/${editPost._id}`;
     }
-
-    fetch(url, {
-      method: method,
-      body: formData,
-      headers: {
-        'Authorization': `Bearer ${this.props.token}`
-      }
-    })
-      .then(res => {
+    async function editHandler() {
+      try {
+        let res;
+        if (editPost) {
+          res = await api.put(url, formData);
+        } else {
+          res = await api.post(url, formData);
+        }
         if (res.status !== 200 && res.status !== 201) {
           throw new Error('Creating or editing a post failed!');
         }
-        return res.json();
-      })
-      .then(resData => {
+        const resData = res.data;
         const post = {
           _id: resData.post._id,
           title: resData.post.title,
@@ -153,94 +124,118 @@ class Feed extends Component {
           creator: resData.post.creator,
           createdAt: resData.post.createdAt
         };
-        this.setState(prevState => {
-          let updatedPosts = [...prevState.posts];
-          if (prevState.editPost) {
-            const postIndex = prevState.posts.findIndex(
-              p => p._id === prevState.editPost._id
+        setposts(prevState => {
+          let updatedPosts = [...prevState];
+          if (editPost) {
+            const postIndex = prevState.findIndex(
+              p => p._id === editPost._id
             );
             updatedPosts[postIndex] = post;
-          } else if (prevState.posts.length < 2) {
-            updatedPosts = prevState.posts.concat(post);
+          } else if (prevState.length < 2) {
+            updatedPosts = prevState.concat(post);
           }
-          return {
-            posts: updatedPosts,
-            isEditing: false,
-            editPost: null,
-            editLoading: false
-          };
-        });
-      })
-      .catch(err => {
+          return [...updatedPosts];
+        })
+        setisEditing(false);
+        seteditLoading(false);
+        seteditPost(null);
+      } catch (err) {
         console.log(err);
-        this.setState({
-          isEditing: false,
-          editPost: null,
-          editLoading: false,
-          error: err
-        });
-      });
-  };
-
-  statusInputChangeHandler = (input, value) => {
-    this.setState({ status: value });
-  };
-
-  deletePostHandler = postId => {
-    this.setState({ postsLoading: true });
-    const url = `http://localhost:5050/feed/post/${postId}`;
-    fetch(url, {
-      method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${this.props.token}`
+        setisEditing(false);
+        seteditPost(null);
+        seteditLoading(false);
+        setError(err);
       }
-    })
-      .then(res => {
+    }
+    editHandler();
+  };
+
+  const statusInputChangeHandler = (input, value) => {
+    setstatus(value);
+  };
+
+  const addPost = (post) => {
+    setposts(prevState => {
+      const updatedPosts = [...prevState];
+      if (postPage === 1) {
+        if (prevState.length >= 2) {
+          updatedPosts.pop();
+        }
+        updatedPosts.unshift(post);
+      }
+      settotalPosts(p => p+1);
+      return updatedPosts;
+    });
+  }
+
+  const deletePostHandler = postId => {
+    setpostsLoading(true);
+    const url = `/feed/post/${postId}`;
+    async function deletePost() {
+      try {
+        const res = await api.delete(url);
         if (res.status !== 200 && res.status !== 201) {
           throw new Error('Deleting a post failed!');
         }
-        return res.json();
-      })
-      .then(resData => {
-        console.log(resData);
-        this.setState(prevState => {
-          const updatedPosts = prevState.posts.filter(p => p._id !== postId);
-          return { posts: updatedPosts, postsLoading: false };
-        });
-      })
-      .catch(err => {
+        console.log(res.data);
+        setposts(prevState => 
+          {
+            const updatedPosts = prevState.filter(p => p._id !== postId);
+            setpostsLoading(false);
+            return [...updatedPosts];
+          }
+        );
+      } catch (err) {
         console.log(err);
-        this.setState({ postsLoading: false });
-      });
+        setpostsLoading(false);
+      }
+    }
+    deletePost();
   };
 
-  errorHandler = () => {
-    this.setState({ error: null });
+  const errorHandler = () => {
+    setError(null);
   };
 
-  catchError = error => {
-    this.setState({ error: error });
+  const catchError = err => {
+    setError(err);
   };
 
-  render() {
+  useEffect(() => {
+    async function getData() {
+      try {
+        const res = await api.get(`/user/status/${props.userId}`);
+        if (res.status !== 200) {
+          throw new Error('Failed to fetch user status.');
+        }
+        setstatus(res.data.status);
+      } catch (e) {
+        catchError(e);
+      }
+    }
+    getData();
+    openSocket(baseURL, {transports: ['websocket', 'polling', 'flashsocket']});
+    loadPosts();
+  }, []); 
+
     return (
       <Fragment>
-        <ErrorHandler error={this.state.error} onHandle={this.errorHandler} />
+        <ErrorHandler error={error} onHandle={errorHandler} />
         <FeedEdit
-          editing={this.state.isEditing}
-          selectedPost={this.state.editPost}
-          loading={this.state.editLoading}
-          onCancelEdit={this.cancelEditHandler}
-          onFinishEdit={this.finishEditHandler}
+          editing={isEditing}
+          selectedPost={editPost}
+          loading={editLoading}
+          onCancelEdit={cancelEditHandler}
+          onFinishEdit={finishEditHandler}
         />
         <section className="feed__status">
-          <form onSubmit={this.statusUpdateHandler}>
+          <form onSubmit={statusUpdateHandler}>
             <Input
               type="text"
               placeholder="Your status"
               control="input"
-              onChange={this.statusInputChangeHandler}
-              value={this.state.status}
+              onChange={statusInputChangeHandler}
+              value={status}
             />
             <Button mode="flat" type="submit">
               Update
@@ -248,27 +243,27 @@ class Feed extends Component {
           </form>
         </section>
         <section className="feed__control">
-          <Button mode="raised" design="accent" onClick={this.newPostHandler}>
+          <Button mode="raised" design="accent" onClick={newPostHandler}>
             New Post
           </Button>
         </section>
         <section className="feed">
-          {this.state.postsLoading && (
+          {postsLoading && (
             <div style={{ textAlign: 'center', marginTop: '2rem' }}>
               <Loader />
             </div>
           )}
-          {this.state.posts.length <= 0 && !this.state.postsLoading ? (
+          {posts.length <= 0 && !postsLoading ? (
             <p style={{ textAlign: 'center' }}>No posts found.</p>
           ) : null}
-          {!this.state.postsLoading && (
+          {!postsLoading && (
             <Paginator
-              onPrevious={this.loadPosts.bind(this, 'previous')}
-              onNext={this.loadPosts.bind(this, 'next')}
-              lastPage={Math.ceil(this.state.totalPosts / 2)}
-              currentPage={this.state.postPage}
+              onPrevious={loadPosts.bind(this, 'previous')}
+              onNext={loadPosts.bind(this, 'next')}
+              lastPage={Math.ceil(totalPosts / postPerPage)}
+              currentPage={postPage}
             >
-              {this.state.posts.map(post => (
+              {posts.map(post => (
                 <Post
                   key={post._id}
                   id={post._id}
@@ -277,8 +272,8 @@ class Feed extends Component {
                   title={post.title}
                   image={post.imageUrl}
                   content={post.content}
-                  onStartEdit={this.startEditPostHandler.bind(this, post._id)}
-                  onDelete={this.deletePostHandler.bind(this, post._id)}
+                  onStartEdit={startEditPostHandler.bind(this, post._id)}
+                  onDelete={deletePostHandler.bind(this, post._id)}
                 />
               ))}
             </Paginator>
@@ -287,6 +282,5 @@ class Feed extends Component {
       </Fragment>
     );
   }
-}
 
 export default Feed;

@@ -171,11 +171,9 @@ exports.updateStatus = async (req, res, next) => {
 exports.generateNewAccessToken = async (req, res, next) => {
     try {
         const userId = req.userId;
-        const email = req.email;
 
         const newAccessToken = jwt.sign({
             userId,
-            email,
             expiresIn: 1
         }, process.env.ACCESS_TOKEN_SECRET, {
             expiresIn: '1h',
@@ -183,7 +181,6 @@ exports.generateNewAccessToken = async (req, res, next) => {
 
         const newRefreshToken = jwt.sign({
             userId,
-            email,
             expiresIn: '2d',
         }, process.env.REFRESH_TOKEN_SECRET, {
             expiresIn: '2d'
@@ -206,6 +203,7 @@ exports.generateNewAccessToken = async (req, res, next) => {
 
         return res.status(200).json({
             token: newAccessToken,
+            userId: userId,
             refreshToken: newRefreshToken,
             tokenExpiration: 1,
         });

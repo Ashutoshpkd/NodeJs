@@ -1,5 +1,6 @@
-import React, { useState, useCallback, useEffect } from "react";
-let logoutTimer;
+import axios from "axios";
+import React, { useState, useCallback } from "react";
+import { baseURL } from "./useAxios";
 
 const AuthContext = React.createContext({
     token: null,
@@ -7,6 +8,12 @@ const AuthContext = React.createContext({
     isAuth: false,
     login: (payload) => {},
     logout: (payload) => {},
+    hasError: false,
+    setToken: () => {},
+    setIsAuth: () => {},
+    setHasError: () => {},
+    setRefreshToken: () => {},
+    setUserId: () => {},
 });
 
 const calculateRemainingTime = (expirationTime) => {
@@ -52,23 +59,29 @@ export const AuthContextProvider = (props) => {
   const [userId, setUserId] = useState(initialUserId);
   const [refreshToken, setRefreshToken] = useState(initialRefreshToken);
   const [isAuth, setIsAuth] = useState(initialAuth);
+  const [hasError, setHasError] = useState(false);
 
     const logout = useCallback(() => {
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('expiryDate');
-        localStorage.removeItem('userId');
-        setToken(null);
-        setUserId(null);
-        setRefreshToken(null);
-        setIsAuth(false);
-
-        if (logoutTimer) {
-            clearTimeout(logoutTimer);
+        async function deleteFromDB() {
+            try {
+                const res = await axios.delete(`${baseURL}/user/logout/${userId}`);
+                console.log(res.data);
+            } catch (err) {
+                console.log(err);
+            } finally {
+                localStorage.removeItem('access_token');
+                localStorage.removeItem('expiryDate');
+                localStorage.removeItem('userId');
+                localStorage.removeItem('remainingTime');
+                localStorage.removeItem('refresh_token');
+                setToken(null);
+                setUserId(null);
+                setRefreshToken(null);
+                setIsAuth(false);
+                setHasError(false);
+            }
         }
-    }, []);
-
-    const refresh = useCallback(() => {
-
+        deleteFromDB();
     }, []);
 
     const login = (payload) => {
@@ -80,22 +93,17 @@ export const AuthContextProvider = (props) => {
         } = payload;
 
         localStorage.setItem('access_token', accessToken);
-        localStorage.setItem('refreshToken', refreshToken);
+        localStorage.setItem('refresh_token', refreshToken);
         localStorage.setItem('userId', userId);
         localStorage.setItem('expiryDate', expiryDate);
         const remainingDuration = calculateRemainingTime(expiryDate);
+        localStorage.setItem('remainingTime', remainingDuration);
         setToken(accessToken);
         setUserId(userId);
         setRefreshToken(refreshToken);
         setIsAuth(true);
-        logoutTimer = setTimeout(refresh, remainingDuration);
+        setHasError(false);
     };
-
-    useEffect(() => {
-        if (tokenData) {
-            logoutTimer = setTimeout(refresh, tokenData.duration);
-        }
-    }, [tokenData, refresh])
 
     const AUTH_STATE = {
         token,
@@ -103,6 +111,13 @@ export const AuthContextProvider = (props) => {
         login,
         logout,
         isAuth,
+        refreshToken,
+        hasError,
+        setToken,
+        setIsAuth,
+        setHasError,
+        setRefreshToken,
+        setUserId,
     }
 
     return (

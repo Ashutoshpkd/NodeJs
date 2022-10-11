@@ -7,15 +7,16 @@ const User = require('../models/users');
 
 exports.getPosts = async (req, res, next) => {
     try {
-        const perPage = 2;
+        const perPage = 3;
         const page = req.query.page || 1;
         const totalItems = await Post.find().countDocuments();
-        const posts = await Post.find().skip((page - 1) * perPage).limit(2);
-
+        const posts = await Post.find().skip((page - 1) * perPage).limit(perPage).populate('creator');
+        console.log(posts);
         return res.status(200).json({
             message: 'Fetched successfully!',
             totalItems,
             posts,
+            perPage,
         });
     } catch (err) {
         if (!err.statusCode) {
