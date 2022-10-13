@@ -5,6 +5,7 @@ const io = require('../socket');
 
 const Post = require('../models/posts');
 const User = require('../models/users');
+const { uploadFile, getObjectSignedUrl, deleteFile } = require('../s3');
 
 exports.getPosts = async (req, res, next) => {
     try {
@@ -12,7 +13,6 @@ exports.getPosts = async (req, res, next) => {
         const page = req.query.page || 1;
         const totalItems = await Post.find().countDocuments();
         const posts = await Post.find().skip((page - 1) * perPage).sort({createdAt: -1}).limit(perPage).populate('creator');
-        console.log(posts);
         return res.status(200).json({
             message: 'Fetched successfully!',
             totalItems,
@@ -30,7 +30,14 @@ exports.getPosts = async (req, res, next) => {
 exports.createPost = async (req, res, next) => {
   const errors = validationResult(req);
   const userId = req.userId;
+  const file = req.file;
 try {
+  if (!(file.mimetype === 'image/png' || file.mimetype === 'image/jpg'
+   || file.mimetype === 'image/jpeg' || file.mimetype === 'image/JPG')) {
+    const err = new Error('Validation failed');
+    err.statusCode = 422;
+    throw err;
+   }
   if (!errors.isEmpty()) {
     const err = new Error('Validation failed');
     err.statusCode = 422;
@@ -49,11 +56,13 @@ try {
 
   const title = req.body.title;
   const content = req.body.content;
-  const imageUrl = req.file.path;
+  const nameOfFile = new Date().toISOString() + '-' + file.originalname;
+  const s3Upload = await uploadFile(file.buffer, nameOfFile, file.mimetype);
+  console.log(s3Upload);
   const post = new Post({
     title: title,
     content: content,
-    imageUrl,
+    imageUrl: nameOfFile,
     creator: userId,
   });
   const user = await User.findById(userId);
@@ -83,6 +92,8 @@ try {
 exports.getPostById = async (req, res, next) => {
     try {
         const post = await Post.findById(req.params.postId);
+        const url = await getObjectSignedUrl(post.imageUrl);
+        post.imageUrl = url;
         return res.status(200).json({
             message: 'Post found!',
             post,
@@ -100,17 +111,12 @@ exports.updatePost = async (req, res, next) => {
     const postId = req.params.postId;
     const title = req.body.title;
     const content = req.body.content;
-    let imageUrl = req.body.images;
+    let imageUrl;
+    const file = req.file;
     const userId = req.userId;
 
-    if (req.file) {
-      imageUrl = req.file.path;
-    }
-
-    if (!imageUrl) {
-      const err = new Error('Image not selected!');
-      err.statusCode = 404;
-      throw err;
+    if (file) {
+      imageUrl = new Date().toISOString() + '-' + file.originalname;
     }
 
     const resp = await Post.findById(postId).populate('creator');
@@ -121,11 +127,14 @@ exports.updatePost = async (req, res, next) => {
       throw err;
     }
 
-    if (imageUrl !== resp.imageUrl) clearImage(resp.imageUrl);
+    let s3Upload;
+    if (imageUrl &&  imageUrl !== resp.imageUrl) {
+      s3Upload = await uploadFile(file.buffer, imageUrl, file.mimetype);
+    };
 
     resp.title = title;
     resp.content = content;
-    resp.imageUrl = imageUrl;
+    resp.imageUrl = imageUrl || resp.imageUrl;
 
     const result = await resp.save();
 
@@ -162,12 +171,13 @@ exports.deletePost = async (req, res, next) => {
       err.statusCode = 422;
       throw err;
     }
-    clearImage(resp.imageUrl);
+    const deleteFromS3 = await deleteFile(resp.imageUrl);
     const result = await Post.findByIdAndDelete(postId);
     io.getIO().emit('post', { type: 'delete', postId } );
     return res.status(200).json({
       message: 'Deleted successfully!',
       post: result,
+      deleteFromS3
     })
   } catch (err) {
     if (!err.statusCode) {
@@ -177,10 +187,3 @@ exports.deletePost = async (req, res, next) => {
   }
 
 }
-
-function clearImage(imgPath) {
-  const filePath = path.join(__dirname, '..', imgPath);
-  fs.unlink(filePath, (err, res) => {
-    console.log(err, res);
-  })
-};

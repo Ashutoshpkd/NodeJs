@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 
 import Image from '../../../components/Image/Image';
-import useAxios, { baseURL } from '../../../store/useAxios';
+import useAxios from '../../../store/useAxios';
 import './SinglePost.css';
 
 function SinglePost(props) {
@@ -27,7 +27,7 @@ function SinglePost(props) {
 
         setTitle(resData.post.title);
         setAuthor(resData.post.creator.name);
-        setImage(baseURL + '/' + resData.post.imageUrl);
+        setImage(resData.post.imageUrl);
         setDate(new Date(resData.post.createdAt).toLocaleDateString('en-US'));
         setContent(resData.post.content);
   

@@ -109,9 +109,9 @@ function Feed(props) {
       try {
         let res;
         if (editPost) {
-          res = await api.put(url, formData);
+          res = await api.put(url, formData, { headers: {'Content-Type': 'multipart/form-data'}});
         } else {
-          res = await api.post(url, formData);
+          res = await api.post(url, formData, { headers: {'Content-Type': 'multipart/form-data'}});
         }
         if (res.status !== 200 && res.status !== 201) {
           throw new Error('Creating or editing a post failed!');
@@ -177,10 +177,9 @@ function Feed(props) {
         if (res.status !== 200 && res.status !== 201) {
           throw new Error('Deleting a post failed!');
         }
-        console.log(res.data);
         loadPosts();
       } catch (err) {
-        console.log(err);
+        setError(err);
         setpostsLoading(false);
       }
     }

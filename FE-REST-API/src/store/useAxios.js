@@ -4,7 +4,7 @@ import dayjs from 'dayjs'
 import { useContext } from 'react'
 import AuthContext from './auth'
 
-export const baseURL = 'http://localhost:5050';
+export const baseURL = 'https://rest-api-dev1.herokuapp.com';
 
 
 const useAxios = () => {

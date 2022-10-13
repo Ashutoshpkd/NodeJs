@@ -13,6 +13,6 @@ router.get('/posts', feedController.getPosts);
 
 router.post('/post', authCheck, feedController.createPost);
 
-router.delete('/post/:postId', authCheck, feedController.deletePost)
+router.delete('/post/:postId', authCheck, feedController.deletePost);
 
 exports.feedRouter = router;
