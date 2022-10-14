@@ -6,8 +6,8 @@
         "ACCESS_TOKEN_SECRET": "CaptainLevi@123Ashutosh@123CaptainLevi@123CHARUL@12345McQueen@123.",
         "REFRESH_TOKEN_SECRET": "Ashutosh@123CaptainLevi@123CHARUL@12345McQueen@123.",
         "PORT": 5050,
-        "AWS_KEY": "AKIAXZYRNXGWXIVQH34W",
-        "AWS_SECRET": "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",
+        "AWS_KEY": "",
+        "AWS_SECRET": "",
         "BUCKET": "rest-api-dev1",
         "BUCKET_REGION": "us-east-1"
     }
