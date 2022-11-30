@@ -6,7 +6,7 @@ import './NavigationItems.css';
 const navItems = [
   { id: 'feed', text: 'Feed', link: '/', auth: true },
   { id: 'login', text: 'Login', link: '/', auth: false },
-  { id: 'signup', text: 'Signup', link: '/signup', auth: false }
+  { id: 'signup', text: 'Signup', link: '/signup', auth: false },
 ];
 
 const navigationItems = props => [
@@ -21,7 +21,7 @@ const navigationItems = props => [
     </li>
   )),
   props.isAuth && (
-    <li className="navigation-item" key="logout">
+    <li className={['navigation-item', props.mobile ? 'mobile' : ''].join(' ')} key="logout">
       <button onClick={props.onLogout}>Logout</button>
     </li>
   )

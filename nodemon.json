@@ -3,12 +3,12 @@
         "USER": "ashutoshpkd",
         "PASSWORD": "naruto",
         "DB": "rest-api-dev",
-        "ACCESS_TOKEN_SECRET": "",
-        "REFRESH_TOKEN_SECRET": "",
+        "ACCESS_TOKEN_SECRET": "CaptainLevi@123Ashutosh@123CaptainLevi@123CHARUL@12345McQueen@123.",
+        "REFRESH_TOKEN_SECRET": "Ashutosh@123CaptainLevi@123CHARUL@12345McQueen@123.",
         "PORT": 5050,
-        "AWS_KEY": "",
-        "AWS_SECRET": "",
-        "BUCKET": "rest-api-dev1",
+        "AWS_KEY": "AKIA2KZ5KW22LL5JZTWT",
+        "AWS_SECRET": "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",
+        "BUCKET": "rest-api-dev-2",
         "BUCKET_REGION": "us-east-1"
     }
 }
